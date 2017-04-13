@@ -536,7 +536,7 @@ Response::ResponseCode Server_ProtocolHandler::cmdMessage(const Command_Message 
     rc.enqueuePreResponseItem(ServerMessage::SESSION_EVENT, se);
 
     databaseInterface->logMessage(userInfo->id(), QString::fromStdString(userInfo->name()), QString::fromStdString(userInfo->address()), QString::fromStdString(cmd.message()), Server_DatabaseInterface::MessageTargetChat, userInterface->getUserInfo()->id(), receiver);
-
+    resetIdleTimer();
     return Response::RespOk;
 }
 
@@ -620,23 +620,9 @@ Response::ResponseCode Server_ProtocolHandler::cmdJoinRoom(const Command_JoinRoo
     if (!r)
         return Response::RespNameNotFound;
 
-    QString roomPermission = r->getRoomPermission().toLower();
-    if (roomPermission != "none"){
-        if (roomPermission == "registered") {
-            if (!(userInfo->user_level() & ServerInfo_User::IsRegistered))
-                return Response::RespUserLevelTooLow;
-        }
-
-        if (roomPermission == "moderator"){
-            if (!(userInfo->user_level() & ServerInfo_User::IsModerator))
-                return Response::RespUserLevelTooLow;
-        }
-
-        if (roomPermission == "administrator"){
-            if (!(userInfo->user_level() & ServerInfo_User::IsAdmin))
-                return Response::RespUserLevelTooLow;
-        }
-    }
+    if (!(userInfo->user_level() & ServerInfo_User::IsModerator))
+        if (!(r->userMayJoin(*userInfo)))
+            return Response::RespUserLevelTooLow;
 
     r->addClient(this);
     rooms.insert(r->getId(), r);
